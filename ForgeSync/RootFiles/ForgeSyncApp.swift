@@ -23,13 +23,13 @@ struct ForgeSyncApp: App {
     @StateObject private var healthKitManager = HealthKitManager.shared
     /// The error manager, responsible for centralized error handling and alerts.
     @StateObject private var errorManager = ErrorManager.shared
-    
+
     /// The user’s preferred appearance setting (system, light, or dark), stored persistently.
     @AppStorage("appearanceSetting") private var appearanceSetting: AppearanceSetting = .system
-    
+
     /// The SwiftData model container for managing User, Profile, Workout categories, Workout, Exercise and SplitTime data of exercises, History as well as App Settings and preferences.
     let modelContainer: ModelContainer
-    
+
     /// Initializes the app, setting up the model container and core managers.
     /// Configures HealthKit, authentication, and initial data population.
     /// - Note: Terminates the app with a fatal error if the model container cannot be initialized.
@@ -57,11 +57,11 @@ struct ForgeSyncApp: App {
             populateCategories(context: modelContainer.mainContext)
             
             print("[App init] ModelContainer and core managers initialized.")
-        }catch {
+        } catch {
             fatalError("Could not initialize ModelContainer: \(error)")
         }
     }
-    
+
     /// Defines the app’s scene, providing the main content view and environment objects.
     /// - Returns: A `WindowGroup` scene with `ContentView` configured with environment objects and appearance settings.
     var body: some Scene {
@@ -129,39 +129,11 @@ struct ForgeSyncApp: App {
                 context.insert(category)
             }
             
-            //throws on fetch errors, allowing the outer catch to log them without duplication
             try context.save()
             print("[populateCategories] Successfully populated all initial categories.")
         } catch {
             print("[populateCategories] Error during category population: \(error)")
-            
-            
-            if let swiftDataError = error as? SwiftDataError, swiftDataError.isRecoverable {  // Replace with actual error checking logic
-                print("[populateCategories] Attempting retry after recoverable error.")
-                do {
-                    let count = try context.fetchCount(fetchDescriptor)
-                    guard count == 0 else {
-                        print("[populateCategories] Categories exist after retry check. Skipping.")
-                        return
-                    }
-                    
-                    try context.save()
-                    print("[populateCategories] Successfully populated on retry.")
-                } catch {
-                    print("[populateCategories] Retry failed: \(error)")
-                    // Fallback: Queue an alert via errorManager for user notification after app launch.
-                    errorManager.currentAlert = AppAlert(
-                        title: "Data Initialization Error",
-                        message: "Failed to populate initial categories. Some features may be unavailable. Please restart the app or contact support.",
-                        primaryButton: .default(Text("OK"))
-                    )
-                }
-            } else {
-                // Non-recoverable: Log and proceed without population, or fatalError if critical.
-                print("[populateCategories] Non-recoverable error; proceeding without population.")
-            }
         }
         print("[populateCategories] Finished initial category population.")
     }
 }
-  
